@@ -1,5 +1,12 @@
-# 2023-NeurIPS-HILO
-Making a repository for this so that as things change (p2p integration etc), code will still be available and work properly. Also because noone ever seems to be able to find NeurIPS supplemental. Will change to public once it's ready.
+[![license](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/bionicvisionlab/2023-NeurIPS-HILO/blob/master/LICENSE)
+[![DOI](https://img.shields.io/badge/DOI-10.1145%2F3458709.3458982-orange)](https://doi.org/10.48550/arXiv.2306.13104)
+[![Data](https://img.shields.io/badge/data-osf.io-lightgrey.svg)](https://osf.io/pc73x/)
+
+# Human-in-the-Loop Optimization for Deep Stimulus Encoding in Visual Prostheses
+This repository houses code accompanying the paper:
+
+> Granley, J., Fauvel, T., Chalk, M., & Beyeler, M. (2023). Human-in-the-Loop Optimization for Deep Stimulus Encoding in Visual Prostheses. _Proceedings of the Thirty-seventh Conference on Neural Information Processing Systems_ ([link](https://arxiv.org/pdf/2306.13104.pdf))
+
 
 ## Instructions for Installation
 This code was developed using Python 3.10; it might work with previous versions, but if you run into any errors, try Python 3.10.
