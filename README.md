@@ -12,6 +12,8 @@ This code was developed using Python 3.10; it might work with previous versions,
 
 Included is a `requirements.txt` file, which can be run to obtain all of the python dependencies. Also included is a `python_env.txt` for reference, with a complete list of all python packages installed.
 
+`pip install -r requirements.txt`
+
 This package also uses the following software, which require additional instalation steps:
 - [pulse2percept](https://pulse2percept.readthedocs.io/). This is an open source package for simulating visual prostheses. It can be installed with pip (and is in requirements.txt) and likely will install without issue. But it also depends on some non-python packages (e.g. 
 gcc). Many systems have these installed already. But if your installation fails, please go through the installation instructions for pulse2percept at https://pulse2percept.readthedocs.io/en/stable/install.html
