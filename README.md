@@ -1,7 +1,6 @@
 [![license](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/bionicvisionlab/2023-NeurIPS-HILO/blob/master/LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-10.1145%2F3458709.3458982-orange)](https://doi.org/10.48550/arXiv.2306.13104)
 [![Data](https://img.shields.io/badge/data-osf.io-lightgrey.svg)](https://osf.io/pc73x/)
-
 # Human-in-the-Loop Optimization for Deep Stimulus Encoding in Visual Prostheses
 This repository houses code accompanying the paper:
 
