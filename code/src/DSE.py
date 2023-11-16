@@ -9,8 +9,10 @@ from pulse2percept.datasets.base import fetch_url
 from src.phosphene_model import MVGModel, MVGSpatial
 
 def fetch_dse(model, implant):
-    dse_path = 'assets/dse'
-    url = 'https://osf.io/download/646de52cf4be380ba162bc18/'
+    dse_path = 'assets/dse_v2'
+    # url = 'https://osf.io/download/646de52cf4be380ba162bc18/'
+    # updated model (corrects small bug in patient parameter a4 of previous model)
+    url = 'https://osf.io/download/6555798c062a3e1162ee0412/' 
     if not (os.path.exists(dse_path) and os.path.isdir(dse_path) and 
             os.path.exists(os.path.join(dse_path, 'saved_model.pb'))):
         if not os.path.exists(dse_path + '.zip'):
@@ -327,7 +329,7 @@ default_phi_ranges = {
         'a1' : [.42, .62],
         'a2' : [0.005, 0.025],
         'a3' : [.2, .7],
-        'a4' : [-0.3, -0.1],
+        'a4' : [-0.5, -0.1],
         'implant_x' : [-500, 500],
         'implant_y' : [-500, 500],
         'implant_rot' : [-np.pi/6, np.pi/6],
@@ -345,7 +347,7 @@ def rand_model_params(n, params=None, ranges={}):
         'a1' : [.42, .62],
         'a2' : [0.005, 0.025],
         'a3' : [.2, .7],
-        'a4' : [-0.1, -0.3], 
+        'a4' : [-.5, -.1], 
         'implant_x' : [-500, 500],
         'implant_y' : [-500, 500],
         'implant_rot' : [-np.pi/6, np.pi/6],
