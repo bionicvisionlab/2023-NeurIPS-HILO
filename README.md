@@ -43,7 +43,7 @@ Matlab is not freely available, however, most universities have licensing deals 
 Required matlab toolboxes (provided with matlab as additional downloads):
 - deep learning toolbox,
 - computer vision toolbox
-- machine learning and statistics toolbox 
+- statistics and machine learning toolbox 
 
 Once installed, there are two additional steps that must be performed to set up matlab python extension and install open source toolboxes: 
 1) Install the python matlab engine. If you have R2023a: `pip install matlabengine==9.14.3`. Otherwise, see directions at https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html.
