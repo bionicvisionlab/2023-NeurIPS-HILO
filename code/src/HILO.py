@@ -1,7 +1,7 @@
 
 
 from src.phosphene_model import RectangleImplant, MVGModel
-from src.DSE import UniversalMVGLayer, load_model, rand_model_params, default_phi_ranges
+from src.DSE import UniversalMVGLayer, load_model, rand_model_params, default_phi_ranges, NaiveEncoding, MODEL_NAMES_TO_VERSION_OSF
 
 import pulse2percept as p2p
 import tensorflow as tf
@@ -88,7 +88,7 @@ class HILOPatient():
                  phi_names=None, comp=True, loss='mse', matlab_dir=None, nopt=2, noise=0.001,
                  misspecification=None, miss_options=[],
                  kernel='Matern52', acquisition='MUC', ranges=None, maxiter=100,
-                 use_phi_names=None, dse=None):
+                 use_phi_names=None, dse=None, version='v2'):
         """
 
         Model and Implant should correspond to the phi you want to optimize!
@@ -105,7 +105,8 @@ class HILOPatient():
         implant_kwargs : dict
             Dict of kwargs to pass to implant (since implant is not stateful) 
         """
-
+        self.version = MODEL_NAMES_TO_VERSION_OSF[version][0]
+        self.universal_mvg_kwargs = MODEL_NAMES_TO_VERSION_OSF[version][2]
         self.model = model
         if self.model is None:
             self.model = MVGModel(xrange=(-12, 12), yrange=(-12, 12), xystep=0.5, rho=250/4)
@@ -129,7 +130,7 @@ class HILOPatient():
         self.phi_true = phi_true
         self.phi_names = phi_names
         if self.phi_names is None:
-            self.phi_names = list(default_phi_ranges.keys())
+            self.phi_names = list(default_phi_ranges[self.version].keys())
         if self.phi_true is None:
             self.phi_true = [model.rho, model.lam, model.orient_scale, model.a0, model.a1, model.a2, model.a3, model.a4]
             for attr in ['x', 'y', 'rot']:
@@ -156,7 +157,7 @@ class HILOPatient():
             # stimulus encoder to be used
             nn_stims = tf.keras.Model(inputs=dse_nn.inputs, outputs=stimlayer.output)
             # patients TRUE perceptual model
-            self.decoder_layer = self.get_decoder_layer(dse_nn.layers[-1], misspecification, miss_options)
+            self.decoder_layer = self.get_decoder_layer(dse_nn.layers[-1], misspecification, miss_options, self.universal_mvg_kwargs)
 
         # construct a mismatch_dse, where the target is encoded tp stimulus with the provided phi, but the phosphene
         # is decoded from the stimulus using the patient's ground truth phi
@@ -170,6 +171,15 @@ class HILOPatient():
         if comp:
             self.mismatch_dse.call = tf.function(self.mismatch_dse.call, jit_compile=True)
 
+        # construct naive nn
+        inp_img = tf.keras.layers.Input(shape=nn_stims.inputs[0].get_shape()[1:])
+        inp_phi = tf.keras.layers.Input(shape=nn_stims.inputs[1].get_shape()[1:])
+        self.naive_layer = NaiveEncoding(self.implant, freq=20, stimrange=(0, 6))
+        stims = self.naive_layer(inp_img)
+        out = self.decoder_layer([stims, tf.broadcast_to(self.phi_true[None, ...], tf.keras.backend.shape(inp_phi))])
+        self.nn_naive = tf.keras.Model(inputs=[inp_img, inp_phi], outputs=out)
+        self.nn_naive.compile(loss=loss, metrics=metrics)
+
         # HILO STUFF
         self.noise = noise
         self.hiloModel = None
@@ -177,14 +187,14 @@ class HILOPatient():
         if self.use_phi_names is None:
             self.use_phi_names = self.phi_names
         if ranges is None:
-            ranges = default_phi_ranges
+            ranges = default_phi_ranges[self.version]
         self.ranges = ranges
         thetacov = np.array([[0.54], [3.63]], dtype='double')
         if matlab_dir is not None:
             self.setup_matlab(matlab_dir, kernel=kernel, ranges=ranges, thetacov=thetacov, acquisition=acquisition, maxiter=maxiter, nopt=nopt)
         
 
-    def get_decoder_layer(self, decoder_layer, misspecification, miss_options):
+    def get_decoder_layer(self, decoder_layer, misspecification, miss_options, universalmvg_kwargs={}):
         """ Allows for the decoder layer to be misspecified"""
         self.missspecification = misspecification
         self.miss_options = miss_options
@@ -194,12 +204,12 @@ class HILOPatient():
             beta_sup, beta_inf = beta_opts[:, t]
             model = p2p.models.MVGModel(xrange=(-12, 12), yrange=(-12, 12), xystep=0.5, beta_sup=beta_sup, beta_inf=beta_inf).build()
             implant = RectangleImplant(spacing=400, shape=(15, 15))
-            return UniversalMVGLayer(model, implant)
+            return UniversalMVGLayer(model, implant, **universalmvg_kwargs)
         elif misspecification == 'thresh':
             perc_change = float(miss_options[0])
             model = p2p.models.MVGModel(xrange=(-12, 12), yrange=(-12, 12), xystep=0.5).build()
             implant = RectangleImplant(spacing=400, shape=(15, 15))
-            return UniversalMVGLayer(model, implant, threshold_miss=perc_change)
+            return UniversalMVGLayer(model, implant, threshold_miss=perc_change, **universalmvg_kwargs)
         else:
             return decoder_layer
 
@@ -259,7 +269,7 @@ class HILOPatient():
     def verify_hilo(self, xtrain, ctrain):
         if self.hiloModel is None:
             raise ValueError("Hilo model not set up")
-        ind = np.concatenate([self.use_phi_indices, len(default_phi_ranges) + self.use_phi_indices])
+        ind = np.concatenate([self.use_phi_indices, len(default_phi_ranges[self.version]) + self.use_phi_indices])
         xtrain = xtrain[ind, ...]
         if xtrain.shape[0] != self.d * 2:
             raise ValueError('Xtrain must be of shape (nd*2, npoints)')

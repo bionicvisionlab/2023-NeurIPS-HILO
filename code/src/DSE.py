@@ -8,11 +8,21 @@ from pulse2percept.datasets.base import fetch_url
 
 from src.phosphene_model import MVGModel, MVGSpatial
 
-def fetch_dse(model, implant):
-    dse_path = 'assets/dse_v2'
-    # url = 'https://osf.io/download/646de52cf4be380ba162bc18/'
-    # updated model (corrects small bug in patient parameter a4 of previous model)
-    url = 'https://osf.io/download/6555798c062a3e1162ee0412/' 
+MODEL_NAMES_TO_VERSION_OSF = {
+    # each elem is model name : (version, dse_asset_path, link, model_kwargs)
+    'v1' : ('v1', 'https://osf.io/download/646de52cf4be380ba162bc18/', {'scale_thresh' : False}),
+    'v2' : ('v2', 'https://osf.io/download/6555798c062a3e1162ee0412/', {'scale_thresh' : False}),
+    'v3' : ('v3', 'https://osf.io/download/65c6be193280d80d88a3afba/', {'scale_thresh' : True}),
+    'v3_nopdur' : ('v3', 'https://osf.io/download/65c6be11435c450d93da8111/', {'scale_thresh' : False}),
+    'v3.5' : ('v3.5', 'https://osf.io/download/65c6be119b32ca0e7197ee90/', {'scale_thresh' : True}),
+    'v3.5_nopdur' : ('v3.5', 'https://osf.io/download/65c6be1935be200e11a5083a/', {'scale_thresh' : False}),
+    'v4' : ('v4', 'https://osf.io/download/65c6be1135be200e15a4ff09/', {'scale_thresh' : True})
+}
+
+def fetch_dse(model, implant, version='v2'):
+    dse_path = os.path.join('assets', 'dse_' + version) if version != 'v1' else os.path.join('assets', 'dse')
+    range_version, url, model_kwargs = MODEL_NAMES_TO_VERSION_OSF[version]
+
     if not (os.path.exists(dse_path) and os.path.isdir(dse_path) and 
             os.path.exists(os.path.join(dse_path, 'saved_model.pb'))):
         if not os.path.exists(dse_path + '.zip'):
@@ -21,16 +31,15 @@ def fetch_dse(model, implant):
             os.mkdir(dse_path)
         with zipfile.ZipFile(dse_path + '.zip', 'r') as zip_ref:
             zip_ref.extractall(os.path.dirname(dse_path))
-
-    return load_model(dse_path, model, implant)
+    return load_model(dse_path, model, implant, model_kwargs=model_kwargs)
         
 
-def load_model(path, model, implant):
+def load_model(path, model, implant, model_kwargs={}):
     nn1 = tf.keras.models.load_model(path)
     def clone_fn(layer): 
         # isinstance raises bug with some layers and nonetype
         if 'UniversalMVGLayer' in str(type(layer)):
-            return UniversalMVGLayer(model, implant)
+            return UniversalMVGLayer(model, implant, **model_kwargs)
             
         return layer.__class__.from_config(layer.get_config())
     
@@ -59,7 +68,8 @@ def load_mnist(model, scale=2.0, pad=2):
 
 
 class UniversalMVGLayer(tf.keras.layers.Layer):
-    def __init__(self, p2pmodel, implant, activity_regularizer=None, amp_cutoff=0.25, n_interp=200, threshold_miss=None, **kwargs):
+    def __init__(self, p2pmodel, implant, activity_regularizer=None, amp_cutoff=0.25, n_interp=200, 
+                 threshold_miss=None, scale_thresh=False, thresh_a0=2.095, thresh_a1=0.054326, **kwargs):
         """ Predicts percepts from (batched) input stimuli
         Universal signifies that it can predict percepts for varying patient-specific parameters without needing recompiling
 
@@ -81,6 +91,8 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
             axon trajectories are quite variable right along the raphe anyways, so this is okay.
         threshold_miss : None or float
             If passed, the level of threshold misspecification used.
+        scale_thresh : bool
+            If true, then will scale threshold based on pulse duration, and thresh_a0 and thresh_a1
         """
         super(UniversalMVGLayer, self).__init__(trainable=False, 
                                                    name="UniversalMVG", 
@@ -94,6 +106,9 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
 
         # self.p2pmodel = p2pmodel
         # self.implant = implant
+        self.scale_thresh = scale_thresh
+        self.thresh_a0 = tf.constant(thresh_a0, dtype='float32')
+        self.thresh_a1 = tf.constant(thresh_a1, dtype='float32')
         self.xrange = tf.constant(p2pmodel.xrange, dtype='float32')
         self.yrange = tf.constant(p2pmodel.yrange, dtype='float32')
         self.xystep = tf.constant(p2pmodel.xystep, dtype='float32')
@@ -155,13 +170,14 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
 
         freq = inputs[0][:, :, 0]
         amp = inputs[0][:, :, 1]
+        pdur = inputs[0][:, :, 2]
+
+        if self.scale_thresh:
+            amp = amp * (self.thresh_a0*pdur + self.thresh_a1)
 
         # this will get compiled out but it never changes within a model anyways
         if self.threshold_miss is not None:
             amp = amp / self.threshold_miss[None, :]
-
-
-        pdur = inputs[0][:, :, 2]
 
         # all subjectparams are (batch, 1)
         rho = inputs[1][:, 0][:, None]
@@ -284,7 +300,7 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
         query = tf.stack([query_x, query_y], axis=-1)
         grid = tf.repeat(self.slopes[None, :, :, None], tf.keras.backend.shape(query)[0], axis=0)
         return tfa.image.interpolate_bilinear(grid, query , indexing='xy')[..., 0]
-        
+  
     def ret2dva(self, x, y):
         """Converts retinal distances (um) to visual angles (deg)
 
@@ -321,7 +337,23 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
         return x, y
     
 
-default_phi_ranges = {
+default_phi_ranges_v1 = {
+        'rho' : [10, 200],
+        'lam' : [0.72, 0.98],
+        'orient_scale' : [0.9, 1.1],
+        'a0' : [.27, .57],
+        'a1' : [.42, .62],
+        'a2' : [0.005, 0.025],
+        'a3' : [.2, .7],
+        'a4' : [-.3000001, -.3],
+        'implant_x' : [-500, 500],
+        'implant_y' : [-500, 500],
+        'implant_rot' : [-np.pi/6, np.pi/6],
+        'loc_od_x' : [3700, 4700],
+        'loc_od_y' : [0, 1000]
+    }
+
+default_phi_ranges_v2 = {
         'rho' : [10, 200],
         'lam' : [0.72, 0.98],
         'orient_scale' : [0.9, 1.1],
@@ -336,24 +368,68 @@ default_phi_ranges = {
         'loc_od_x' : [3700, 4700],
         'loc_od_y' : [0, 1000]
     }
-def rand_model_params(n, params=None, ranges={}):
-    """ Helper function to get random phi (patient specific parameters) """
-    ood = False
-    default_ranges = {
+
+default_phi_ranges_v3 = { 
         'rho' : [10, 200],
-        'lam' : [0.72, 0.98],
+        'lam' : [0.75, 0.98],
         'orient_scale' : [0.9, 1.1],
         'a0' : [.27, .57],
         'a1' : [.42, .62],
         'a2' : [0.005, 0.025],
         'a3' : [.2, .7],
-        'a4' : [-.5, -.1], 
+        'a4' : [-.3, -.1],
         'implant_x' : [-500, 500],
         'implant_y' : [-500, 500],
         'implant_rot' : [-np.pi/6, np.pi/6],
         'loc_od_x' : [3700, 4700],
         'loc_od_y' : [0, 1000]
     }
+default_phi_ranges_v35 = { 
+        'rho' : [10, 400],
+        'lam' : [0.75, 0.98],
+        'orient_scale' : [0.9, 1.1],
+        'a0' : [.27, .57],
+        'a1' : [.42, .62],
+        'a2' : [0.005, 0.025],
+        'a3' : [.2, .7],
+        'a4' : [-.3, -.1],
+        'implant_x' : [-500, 500],
+        'implant_y' : [-500, 500],
+        'implant_rot' : [-np.pi/6, np.pi/6],
+        'loc_od_x' : [3700, 4700],
+        'loc_od_y' : [0, 1000]
+    }
+default_phi_ranges_v4 = { 
+        'rho' : [25, 400],
+        'lam' : [0.75, 0.985],
+        'orient_scale' : [0.9, 1.1],
+        'a0' : [.27, .57],
+        'a1' : [.42, .62],
+        'a2' : [0.005, 0.025],
+        'a3' : [.2, .7],
+        'a4' : [-0.3, -0.02], 
+        'implant_x' : [-500, 500],
+        'implant_y' : [-500, 500],
+        'implant_rot' : [-np.pi/6, np.pi/6],
+        'loc_od_x' : [3700, 4700],
+        'loc_od_y' : [0, 1000]
+    }
+
+default_phi_ranges = {
+    'v1' : default_phi_ranges_v1,
+    'v2' : default_phi_ranges_v2,
+    'v3' : default_phi_ranges_v3,
+    'v3.5' : default_phi_ranges_v35,
+    'v4' : default_phi_ranges_v4
+}
+
+def rand_model_params(n, params=None, ranges={}, version='v2'):
+    """ Helper function to get random phi (patient specific parameters) """
+    ood = False
+    if version not in default_phi_ranges.keys():
+        if version in MODEL_NAMES_TO_VERSION_OSF.keys():
+            version = MODEL_NAMES_TO_VERSION_OSF[version][0]
+    default_ranges = default_phi_ranges[version]
 
     if params is None or params == 'all':
         params = default_ranges.keys()
@@ -372,3 +448,41 @@ def rand_model_params(n, params=None, ranges={}):
         if not ood:
             out[:, i] = np.clip(row, new_ranges[param][0], new_ranges[param][1])
     return out
+
+
+class NaiveEncoding(tf.keras.layers.Layer):
+    def __init__(self, implant, mode='amp', stimrange=(0, 4), maxval=2, thresh=0.75, freq=20, amp=1, **kwargs):
+        super(NaiveEncoding, self).__init__(trainable=False, 
+                                                   name="Naive", 
+                                                   dtype='float32',
+                                                   **kwargs)
+        self.stimrange = stimrange
+        self.maxval = maxval
+        self.thresh = thresh
+        self.freq = freq
+        self.amp = amp
+        self.mode = mode
+        
+        self.n_elecs = len(implant.electrodes)
+        self.array_shape = implant.earray.shape
+        self.elec_x = tf.constant([implant[e].x for e in implant.electrodes], dtype='float32')
+        self.elec_y = tf.constant([implant[e].y for e in implant.electrodes], dtype='float32')
+    
+    def compute_output_shape(self, input_shape):
+        batched_percept_shape = tuple([input_shape[0], self.n_elecs, 3])
+        return batched_percept_shape
+
+    @tf.function()
+    def call(self, inputs):
+        targets = inputs
+        target_resized = tf.reshape(tf.image.resize(targets, self.array_shape, antialias=True), (len(targets), -1))
+        target_scaled = target_resized / self.maxval * (self.stimrange[1] - self.stimrange[0]) + self.stimrange[0]
+        if self.mode == 'amp':
+            amps = tf.where(target_scaled > self.thresh, target_scaled, tf.zeros_like(target_scaled))
+            freqs = tf.where(target_scaled > self.thresh, tf.ones_like(target_scaled) * self.freq, tf.zeros_like(target_scaled))
+        elif self.mode == 'freq':
+            freqs = tf.where(target_scaled > self.thresh, target_scaled, tf.zeros_like(target_scaled))
+            amps = tf.where(target_scaled > self.thresh, tf.ones_like(target_scaled) * self.amp, tf.zeros_like(target_scaled))
+        pdurs = tf.ones_like(amps) * 0.35
+        stim = tf.stack([freqs, amps, pdurs], axis=-1)
+        return stim
