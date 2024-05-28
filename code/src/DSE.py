@@ -16,7 +16,10 @@ MODEL_NAMES_TO_VERSION_OSF = {
     'v3_nopdur' : ('v3', 'https://osf.io/download/65c6be11435c450d93da8111/', {'scale_thresh' : False}),
     'v3.5' : ('v3.5', 'https://osf.io/download/65c6be119b32ca0e7197ee90/', {'scale_thresh' : True}),
     'v3.5_nopdur' : ('v3.5', 'https://osf.io/download/65c6be1935be200e11a5083a/', {'scale_thresh' : False}),
-    'v4' : ('v4', 'https://osf.io/download/65c6be1135be200e15a4ff09/', {'scale_thresh' : True})
+    'v4' : ('v4', 'https://osf.io/download/65c6be1135be200e15a4ff09/', {'scale_thresh' : True}),
+    'v4_1e-5pd' : ('v4', 'https://osf.io/download/6656607c77ff4c45d1e04fed/', {'scale_thresh' : True}),
+    'v4_1e-4f' : ('v4', 'https://osf.io/download/eagrs/', {'scale_thresh' : True}),
+    'v4_1e-5pd_1e-4f' : ('v4', 'https://osf.io/download/66566098d835c420d44ce223/', {'scale_thresh' : True})
 }
 
 def fetch_dse(model, implant, version='v2'):
@@ -100,7 +103,7 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
                                                    activity_regularizer=activity_regularizer, **kwargs)
 
         if not (isinstance(p2pmodel, MVGModel) or isinstance(p2pmodel, MVGSpatial)):
-            raise ValueError("Must pass in a valide MVGModel")
+            raise ValueError("Must pass in a valid MVGModel")
         if not isinstance(implant, p2p.implants.ProsthesisSystem):
             raise ValueError("Invalid implant")
 
