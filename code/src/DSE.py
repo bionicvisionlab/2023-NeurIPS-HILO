@@ -20,6 +20,7 @@ MODEL_NAMES_TO_VERSION_OSF = {
     'v4_1e-5pd' : ('v4', 'https://osf.io/download/6656607c77ff4c45d1e04fed/', {'scale_thresh' : True}),
     'v4_1e-4f' : ('v4', 'https://osf.io/download/eagrs/', {'scale_thresh' : True}),
     'v4_1e-5pd_1e-4f' : ('v4', 'https://osf.io/download/66566098d835c420d44ce223/', {'scale_thresh' : True})
+    'v4_freqclip' : ('v4', 'https://osf.io/download/665f5aac0f8c8008223c9d36/', {'scale_thresh' : True}),
 }
 
 def fetch_dse(model, implant, version='v2'):
