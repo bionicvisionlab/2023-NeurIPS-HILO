@@ -15,13 +15,24 @@ The main demo notebook is [code/HILO.ipynb](https://github.com/bionicvisionlab/2
 ## Instructions for Installation
 
 **IMPORTANT**
-The code for this paper was developed using pulse2percept on branch 410ece (modified version 0.7). To get the exact results from the paper, follow the instructions below. However, we have also released a version which works with updated pulse2percept version 0.9. To use this version, install `requirements-p2p09.txt` instead of `requirements.txt`, and use the p2p-0.9 branch of this repository instead.
+The code for this paper was developed using pulse2percept on branch 410ece (modified version 0.7). To get the exact results from the paper, follow the instructions below. However, we have also released a version which works with updated pulse2percept version 0.9. To use this version, install `requirements-p2p09.txt` instead of `requirements.txt`, and use the p2p_0.9 branch of this repository instead.
 
-### TLDR Installation
+### TLDR Installation for exact version from paper
 Install Matlab R2023a with deep learning, computer vision, and machine learning and statistics toolboxes
 ```
 pip install -r requirements.txt
 pip install git+https://github.com/pulse2percept/pulse2percept@410ece
+pip install matlabengine==9.14.3
+cd code/matlab
+git clone git@github.com:TristanFauvel/BO_toolbox.git
+git clone git@github.com:TristanFauvel/GP_toolbox.git
+```
+
+### TLDR Installation for pulse2percept 0.9
+Install Matlab R2023a with deep learning, computer vision, and machine learning and statistics toolboxes
+```
+pip install -r requirements-p2p09.txt
+pip install git+https://github.com/pulse2percept/pulse2percept
 pip install matlabengine==9.14.3
 cd code/matlab
 git clone git@github.com:TristanFauvel/BO_toolbox.git
@@ -38,7 +49,7 @@ Included is a `requirements.txt` file, which can be run to obtain all of the pyt
 
 
 This package also uses the following software which require additional installation steps:
-- [pulse2percept](https://pulse2percept.readthedocs.io/). This is an open source package for simulating visual prostheses.To get the latest version, run `pip install git+https://github.com/pulse2percept/pulse2percept`. See note above regarding versions! This paper used commit `410ece`, however it will also work with newer p2p (0.9) if you use the p2p-0.9 branch and `requirements-p2p0.9.txt`. P2P likely will install without issue. But it also depends on some non-python packages (e.g. gcc). Many systems have these installed already, but if your installation fails, please go through the installation instructions for pulse2percept at https://pulse2percept.readthedocs.io/en/stable/install.html
+- [pulse2percept](https://pulse2percept.readthedocs.io/). This is an open source package for simulating visual prostheses.To get the latest version, run `pip install git+https://github.com/pulse2percept/pulse2percept`. See note above regarding versions! This paper used commit `410ece`, however it will also work with newer p2p (0.9) if you use the p2p_0.9 branch and `requirements-p2p0.9.txt`. P2P likely will install without issue. But it also depends on some non-python packages (e.g. gcc). Many systems have these installed already, but if your installation fails, please go through the installation instructions for pulse2percept at https://pulse2percept.readthedocs.io/en/stable/install.html
 - Tensorflow. Tensorflow can also be installed with pip (we used version 2.12.0, listed in requirements.txt), but you may have to set up CUDA or install differently if you want it to use a GPU. See https://www.tensorflow.org/install/pip
 - Matlab. All Bayesian optimization is performed in Matlab, using existing open source Bayesian optimization and Gaussian Process toolboxes (https://github.com/TristanFauvel/BO_toolbox, https://github.com/TristanFauvel/GP_toolbox). If you do not have, or do not wish to install Matlab, then you can still run all code for the deep stimulus encoder and phosphene model, and see the results from HILO in `HILO.ipynb` from us running the notebook. The following section provides more details on installing Matlab.
 
