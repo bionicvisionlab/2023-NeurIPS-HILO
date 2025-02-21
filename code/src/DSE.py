@@ -120,7 +120,7 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
         self.pixelgrid = tf.constant(np.swapaxes(np.indices(p2pmodel.grid.shape), 0, 2).reshape(-1, 2), dtype='float32')
         self.npoints = tf.constant(self.pixelgrid.shape[0])
         self.thresh_percept = tf.constant(1 / tf.exp(1.)**2, dtype='float32')
-        x, y = p2pmodel.retinotopy.dva2ret(p2pmodel.loc_od[0], p2pmodel.loc_od[1]) 
+        x, y = p2pmodel.vfmap.dva_to_ret(p2pmodel.loc_od[0], p2pmodel.loc_od[1]) 
         self.od_off_x = tf.constant(x, dtype='float32')
         self.od_off_y = tf.constant(y, dtype='float32')
 
@@ -134,10 +134,10 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
         # for interp method
         self.n_interp = n_interp
         # retinal coords
-        self.xlow = tf.constant(np.min(p2pmodel.grid.xret), dtype='float32')
-        self.xhigh = tf.constant(np.max(p2pmodel.grid.xret), dtype='float32')
-        self.ylow = tf.constant(np.min(p2pmodel.grid.yret), dtype='float32')
-        self.yhigh = tf.constant(np.max(p2pmodel.grid.yret), dtype='float32')
+        self.xlow = tf.constant(np.min(p2pmodel.grid.ret.x), dtype='float32')
+        self.xhigh = tf.constant(np.max(p2pmodel.grid.ret.x), dtype='float32')
+        self.ylow = tf.constant(np.min(p2pmodel.grid.ret.y), dtype='float32')
+        self.yhigh = tf.constant(np.max(p2pmodel.grid.ret.y), dtype='float32')
         self.interp_step_x = tf.constant((self.xhigh-self.xlow) / (self.n_interp - 1), dtype='float32')
         self.interp_step_y = tf.constant((self.yhigh-self.ylow) / (self.n_interp - 1), dtype='float32')
         # (n_interp, n_interp, 2)
@@ -255,7 +255,7 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
     
         # need to find where each electrode will be in PIXEL coordinates
         # all (batch, elecs)
-        center_dva = self.ret2dva(ex, ey)
+        center_dva = self.ret_to_dva(ex, ey)
         center_x = (center_dva[0] - self.xrange[0]) / self.xystep
         # build it up upside down so that once its flipped, the orientation will be correct
         center_y = tf.cast(self.percept_shape[0], 'float32') - (center_dva[1] - self.yrange[0])/self.xystep
@@ -305,7 +305,7 @@ class UniversalMVGLayer(tf.keras.layers.Layer):
         grid = tf.repeat(self.slopes[None, :, :, None], tf.keras.backend.shape(query)[0], axis=0)
         return tfa.image.interpolate_bilinear(grid, query , indexing='xy')[..., 0]
   
-    def ret2dva(self, x, y):
+    def ret_to_dva(self, x, y):
         """Converts retinal distances (um) to visual angles (deg)
 
         This function converts an eccentricity measurement on the retinal

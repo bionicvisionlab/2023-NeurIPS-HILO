@@ -43,7 +43,7 @@ def patient_from_phi(phi, model, implant, implant_kwargs={}, layer=None):
     return model, implant_new
 
 
-def phi_arr2dict(phi, names=None, retinotopy=p2p.utils.Watson2014Map()):
+def phi_arr2dict(phi, names=None, vfmap=p2p.topography.Watson2014Map()):
     """
     Pretty dict form of phi
     Some values are changed to match how p2p expects them.
@@ -62,7 +62,7 @@ def phi_arr2dict(phi, names=None, retinotopy=p2p.utils.Watson2014Map()):
         loc_od = (phi[names.index('loc_od_x')], 406.97)
     elif 'loc_od_y' in names:
         loc_od = (4205.404, phi[names.index('loc_od_y')])
-    loc_od = retinotopy.ret2dva(loc_od[0], loc_od[1])
+    loc_od = vfmap.ret_to_dva(loc_od[0], loc_od[1])
 
     phi_dict = {}
     for idx, name in enumerate(names):
@@ -139,7 +139,7 @@ class HILOPatient():
                 else:
                     self.phi_true.append(0.)
             # loc od needs to be in RET
-            loc_od = model.retinotopy.dva2ret(model.loc_od[0], model.loc_od[1])
+            loc_od = model.vfmap.dva_to_ret(model.loc_od[0], model.loc_od[1])
             self.phi_true += [loc_od[0], loc_od[1]]
         self.phi_true = tf.constant(self.phi_true, dtype='float32')
 

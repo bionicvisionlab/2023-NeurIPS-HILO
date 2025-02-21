@@ -104,10 +104,10 @@ class MVGSpatial(AxonMapSpatial):
             use ``x_range=(0, 1)`` and ``xystep=0.5``.
         grid_type : {'rectangular', 'hexagonal'}
             Whether to simulate points on a rectangular or hexagonal grid
-        retinotopy : :py:class:`~pulse2percept.utils.VisualFieldMap`, optional
-            An instance of a :py:class:`~pulse2percept.utils.VisualFieldMap`
-            object that provides ``ret2dva`` and ``dva2ret`` methods.
-            By default, :py:class:`~pulse2percept.utils.Watson2014Map` is
+        vfmap : :py:class:`~pulse2percept.topography.VisualFieldMap`, optional
+            An instance of a :py:class:`~pulse2percept.topography.VisualFieldMap`
+            object that provides ``ret_to_dva`` and ``dva_to_ret`` methods.
+            By default, :py:class:`~pulse2percept.topography.Watson2014Map` is
             used.
         n_gray : int, optional
             The number of gray levels to use. If an integer is given, k-means
@@ -249,8 +249,9 @@ class MVGSpatial(AxonMapSpatial):
             cov = R @ eig @ R.T
 
             # Need to find where the electrode will be in DVA, but in PIXEL coordinates
-            center_dva = self.retinotopy.ret2dva(x, y)
+            center_dva = self.vfmap.ret_to_dva(x, y)
             # build up image using reversed (fliped vertically) image to get orientations right, flip at end
+            center_dva = (center_dva[0], -center_dva[1])
             center_pixel = [(center_dva[0] - self.xrange[0])/self.xystep, shape[0] - (center_dva[1] - self.yrange[0])/self.xystep]
             norm = multivariate_normal(mean=center_pixel, cov=cov, allow_singular=True) # centered for now
             def generator_fn(ys, xs, offset=(0, 0)):
@@ -382,10 +383,10 @@ class MVGModel(Model):
             use ``x_range=(0, 1)`` and ``xystep=0.5``.
         grid_type : {'rectangular', 'hexagonal'}
             Whether to simulate points on a rectangular or hexagonal grid
-        retinotopy : :py:class:`~pulse2percept.utils.VisualFieldMap`, optional
-            An instance of a :py:class:`~pulse2percept.utils.VisualFieldMap`
-            object that provides ``ret2dva`` and ``dva2ret`` methods.
-            By default, :py:class:`~pulse2percept.utils.Watson2014Map` is
+        vfmap : :py:class:`~pulse2percept.topography.VisualFieldMap`, optional
+            An instance of a :py:class:`~pulse2percept.topography.VisualFieldMap`
+            object that provides ``ret_to_dva`` and ``dva_to_ret`` methods.
+            By default, :py:class:`~pulse2percept.topography.Watson2014Map` is
             used.
         n_gray : int, optional
             The number of gray levels to use. If an integer is given, k-means
